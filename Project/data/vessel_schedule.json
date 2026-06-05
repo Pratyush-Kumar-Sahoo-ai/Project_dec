@@ -1,0 +1,565 @@
+{
+  "vessels": [
+    {
+      "vessel_id": "VSL001",
+      "ports": [
+        "PORT_01",
+        "PORT_03",
+        "PORT_04"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-04T11:28:44",
+          "etd": "2025-01-05T16:25:49",
+          "discharge_start": "2025-01-04T11:28:44",
+          "discharge_end": "2025-01-04T19:31:57",
+          "load_start": "2025-01-05T00:32:09",
+          "load_end": "2025-01-05T08:53:36"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-15T12:29:43",
+          "etd": "2025-01-16T13:20:20",
+          "discharge_start": "2025-01-15T12:29:43",
+          "discharge_end": "2025-01-15T22:32:43",
+          "load_start": "2025-01-16T03:46:54",
+          "load_end": "2025-01-16T13:20:20"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-01-27T11:22:43",
+          "etd": "2025-01-28T15:03:36",
+          "discharge_start": "2025-01-27T11:22:43",
+          "discharge_end": "2025-01-27T18:49:34",
+          "load_start": "2025-01-27T23:00:14",
+          "load_end": "2025-01-28T08:58:29"
+        },
+        {
+          "rotation_number": 4,
+          "eta": "2025-02-08T07:40:15",
+          "etd": "2025-02-09T11:27:48",
+          "discharge_start": "2025-02-08T07:40:15",
+          "discharge_end": "2025-02-08T16:56:25",
+          "load_start": "2025-02-08T19:24:46",
+          "load_end": "2025-02-09T04:52:36"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL002",
+      "ports": [
+        "PORT_07",
+        "PORT_13",
+        "PORT_01"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-04T11:53:33",
+          "etd": "2025-01-05T15:50:02",
+          "discharge_start": "2025-01-04T11:53:33",
+          "discharge_end": "2025-01-04T22:45:00",
+          "load_start": "2025-01-05T06:19:24",
+          "load_end": "2025-01-05T15:50:02"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-19T11:40:21",
+          "etd": "2025-01-20T10:56:09",
+          "discharge_start": "2025-01-19T11:40:21",
+          "discharge_end": "2025-01-19T21:16:20",
+          "load_start": "2025-01-20T01:54:03",
+          "load_end": "2025-01-20T10:56:09"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-02-01T15:39:23",
+          "etd": "2025-02-02T12:49:50",
+          "discharge_start": "2025-02-01T15:39:23",
+          "discharge_end": "2025-02-02T01:00:34",
+          "load_start": "2025-02-02T04:23:25",
+          "load_end": "2025-02-02T12:49:50"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL003",
+      "ports": [
+        "PORT_01",
+        "PORT_02",
+        "PORT_04",
+        "PORT_09",
+        "PORT_08",
+        "PORT_11"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-01T19:11:30",
+          "etd": "2025-01-02T20:27:12",
+          "discharge_start": "2025-01-01T19:11:30",
+          "discharge_end": "2025-01-02T04:20:55",
+          "load_start": "2025-01-02T10:41:19",
+          "load_end": "2025-01-02T20:27:12"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-10T22:37:55",
+          "etd": "2025-01-11T21:42:53",
+          "discharge_start": "2025-01-10T22:37:55",
+          "discharge_end": "2025-01-11T06:23:37",
+          "load_start": "2025-01-11T08:58:30",
+          "load_end": "2025-01-11T17:50:14"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-01-20T13:41:16",
+          "etd": "2025-01-21T12:01:12",
+          "discharge_start": "2025-01-20T13:41:16",
+          "discharge_end": "2025-01-21T00:37:28",
+          "load_start": "2025-01-21T03:12:53",
+          "load_end": "2025-01-21T12:01:12"
+        },
+        {
+          "rotation_number": 4,
+          "eta": "2025-01-30T11:28:35",
+          "etd": "2025-01-31T11:01:41",
+          "discharge_start": "2025-01-30T11:28:35",
+          "discharge_end": "2025-01-30T20:37:18",
+          "load_start": "2025-01-30T23:27:46",
+          "load_end": "2025-01-31T07:49:47"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL004",
+      "ports": [
+        "PORT_02",
+        "PORT_07",
+        "PORT_11",
+        "PORT_01",
+        "PORT_12",
+        "PORT_09"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-05T03:30:35",
+          "etd": "2025-01-06T00:20:47",
+          "discharge_start": "2025-01-05T03:30:35",
+          "discharge_end": "2025-01-05T10:34:08",
+          "load_start": "2025-01-05T13:07:42",
+          "load_end": "2025-01-05T22:38:08"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-18T20:14:27",
+          "etd": "2025-01-19T22:26:36",
+          "discharge_start": "2025-01-18T20:14:27",
+          "discharge_end": "2025-01-19T06:41:58",
+          "load_start": "2025-01-19T14:06:51",
+          "load_end": "2025-01-19T22:26:36"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-01-31T03:36:41",
+          "etd": "2025-02-01T06:22:39",
+          "discharge_start": "2025-01-31T03:36:41",
+          "discharge_end": "2025-01-31T13:45:07",
+          "load_start": "2025-01-31T17:27:48",
+          "load_end": "2025-02-01T02:51:24"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL005",
+      "ports": [
+        "PORT_03",
+        "PORT_02",
+        "PORT_10",
+        "PORT_01",
+        "PORT_06"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-02T05:52:28",
+          "etd": "2025-01-03T10:54:26",
+          "discharge_start": "2025-01-02T05:52:28",
+          "discharge_end": "2025-01-02T14:07:44",
+          "load_start": "2025-01-02T16:25:47",
+          "load_end": "2025-01-03T01:23:00"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-16T21:43:23",
+          "etd": "2025-01-17T23:49:33",
+          "discharge_start": "2025-01-16T21:43:23",
+          "discharge_end": "2025-01-17T05:02:37",
+          "load_start": "2025-01-17T08:09:31",
+          "load_end": "2025-01-17T17:20:55"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-01-30T19:29:06",
+          "etd": "2025-01-31T20:55:03",
+          "discharge_start": "2025-01-30T19:29:06",
+          "discharge_end": "2025-01-31T06:02:46",
+          "load_start": "2025-01-31T09:31:24",
+          "load_end": "2025-01-31T18:42:45"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL006",
+      "ports": [
+        "PORT_11",
+        "PORT_06",
+        "PORT_10",
+        "PORT_08",
+        "PORT_04"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-05T17:58:42",
+          "etd": "2025-01-06T15:34:45",
+          "discharge_start": "2025-01-05T17:58:42",
+          "discharge_end": "2025-01-06T02:10:42",
+          "load_start": "2025-01-06T06:04:31",
+          "load_end": "2025-01-06T15:34:45"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-16T00:11:32",
+          "etd": "2025-01-17T04:45:45",
+          "discharge_start": "2025-01-16T00:11:32",
+          "discharge_end": "2025-01-16T08:02:41",
+          "load_start": "2025-01-16T11:38:09",
+          "load_end": "2025-01-16T21:30:09"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-01-27T11:50:23",
+          "etd": "2025-01-28T17:38:45",
+          "discharge_start": "2025-01-27T11:50:23",
+          "discharge_end": "2025-01-27T20:35:33",
+          "load_start": "2025-01-28T01:51:06",
+          "load_end": "2025-01-28T10:27:24"
+        },
+        {
+          "rotation_number": 4,
+          "eta": "2025-02-07T01:35:38",
+          "etd": "2025-02-08T06:07:53",
+          "discharge_start": "2025-02-07T01:35:38",
+          "discharge_end": "2025-02-07T10:48:44",
+          "load_start": "2025-02-07T18:24:10",
+          "load_end": "2025-02-08T02:36:36"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL007",
+      "ports": [
+        "PORT_01",
+        "PORT_04",
+        "PORT_08",
+        "PORT_13",
+        "PORT_05",
+        "PORT_02"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-05T18:49:22",
+          "etd": "2025-01-06T23:03:27",
+          "discharge_start": "2025-01-05T18:49:22",
+          "discharge_end": "2025-01-06T02:39:55",
+          "load_start": "2025-01-06T06:43:21",
+          "load_end": "2025-01-06T16:05:51"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-23T21:16:43",
+          "etd": "2025-01-25T00:31:55",
+          "discharge_start": "2025-01-23T21:16:43",
+          "discharge_end": "2025-01-24T05:58:23",
+          "load_start": "2025-01-24T09:37:59",
+          "load_end": "2025-01-24T17:38:24"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL008",
+      "ports": [
+        "PORT_01",
+        "PORT_03",
+        "PORT_04"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-06T05:07:05",
+          "etd": "2025-01-07T05:39:54",
+          "discharge_start": "2025-01-06T05:07:05",
+          "discharge_end": "2025-01-06T12:25:08",
+          "load_start": "2025-01-06T19:43:04",
+          "load_end": "2025-01-07T05:31:32"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-24T20:47:38",
+          "etd": "2025-01-26T01:24:13",
+          "discharge_start": "2025-01-24T20:47:38",
+          "discharge_end": "2025-01-25T04:47:31",
+          "load_start": "2025-01-25T07:24:32",
+          "load_end": "2025-01-25T16:58:09"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL009",
+      "ports": [
+        "PORT_11",
+        "PORT_12",
+        "PORT_03"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-02-05T04:29:55",
+          "etd": "2025-02-06T03:26:46",
+          "discharge_start": "2025-02-05T04:29:55",
+          "discharge_end": "2025-02-05T12:08:55",
+          "load_start": "2025-02-05T18:56:52",
+          "load_end": "2025-02-06T03:18:07"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL010",
+      "ports": [
+        "PORT_07",
+        "PORT_03",
+        "PORT_04",
+        "PORT_02",
+        "PORT_05",
+        "PORT_16"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-31T14:54:00",
+          "etd": "2025-02-01T15:29:10",
+          "discharge_start": "2025-01-31T14:54:00",
+          "discharge_end": "2025-02-01T00:34:46",
+          "load_start": "2025-02-01T06:59:24",
+          "load_end": "2025-02-01T15:29:10"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL011",
+      "ports": [
+        "PORT_06",
+        "PORT_02",
+        "PORT_09"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-10T07:25:14",
+          "etd": "2025-01-11T05:41:01",
+          "discharge_start": "2025-01-10T07:25:14",
+          "discharge_end": "2025-01-10T16:15:42",
+          "load_start": "2025-01-10T20:05:34",
+          "load_end": "2025-01-11T05:41:01"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL012",
+      "ports": [
+        "PORT_04",
+        "PORT_02",
+        "PORT_14",
+        "PORT_09"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-03T06:08:28",
+          "etd": "2025-01-04T06:56:35",
+          "discharge_start": "2025-01-03T06:08:28",
+          "discharge_end": "2025-01-03T15:10:43",
+          "load_start": "2025-01-03T21:15:21",
+          "load_end": "2025-01-04T06:56:35"
+        },
+        {
+          "rotation_number": 2,
+          "eta": "2025-01-21T22:40:10",
+          "etd": "2025-01-22T22:09:54",
+          "discharge_start": "2025-01-21T22:40:10",
+          "discharge_end": "2025-01-22T06:42:51",
+          "load_start": "2025-01-22T12:11:52",
+          "load_end": "2025-01-22T22:09:54"
+        },
+        {
+          "rotation_number": 3,
+          "eta": "2025-02-09T01:06:38",
+          "etd": "2025-02-10T00:01:31",
+          "discharge_start": "2025-02-09T01:06:38",
+          "discharge_end": "2025-02-09T09:21:55",
+          "load_start": "2025-02-09T15:00:09",
+          "load_end": "2025-02-10T00:01:31"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL013",
+      "ports": [
+        "PORT_07",
+        "PORT_11",
+        "PORT_09",
+        "PORT_02"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-06T23:24:05",
+          "etd": "2025-01-08T04:41:04",
+          "discharge_start": "2025-01-06T23:24:05",
+          "discharge_end": "2025-01-07T08:28:52",
+          "load_start": "2025-01-07T15:19:12",
+          "load_end": "2025-01-08T00:41:38"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL014",
+      "ports": [
+        "PORT_10",
+        "PORT_04",
+        "PORT_01"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-26T15:09:28",
+          "etd": "2025-01-27T17:08:13",
+          "discharge_start": "2025-01-26T15:09:28",
+          "discharge_end": "2025-01-27T00:56:48",
+          "load_start": "2025-01-27T06:16:23",
+          "load_end": "2025-01-27T14:39:25"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL015",
+      "ports": [
+        "PORT_02",
+        "PORT_06",
+        "PORT_13",
+        "PORT_08",
+        "PORT_01"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-24T17:22:58",
+          "etd": "2025-01-25T16:32:29",
+          "discharge_start": "2025-01-24T17:22:58",
+          "discharge_end": "2025-01-25T02:34:28",
+          "load_start": "2025-01-25T04:34:37",
+          "load_end": "2025-01-25T13:09:03"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL016",
+      "ports": [
+        "PORT_02",
+        "PORT_06",
+        "PORT_03",
+        "PORT_08"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-18T09:21:35",
+          "etd": "2025-01-19T12:11:28",
+          "discharge_start": "2025-01-18T09:21:35",
+          "discharge_end": "2025-01-18T18:24:15",
+          "load_start": "2025-01-19T01:10:00",
+          "load_end": "2025-01-19T11:05:11"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL017",
+      "ports": [
+        "PORT_03",
+        "PORT_19",
+        "PORT_01",
+        "PORT_06",
+        "PORT_11",
+        "PORT_13"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-21T02:31:08",
+          "etd": "2025-01-22T04:35:33",
+          "discharge_start": "2025-01-21T02:31:08",
+          "discharge_end": "2025-01-21T10:51:35",
+          "load_start": "2025-01-21T17:46:13",
+          "load_end": "2025-01-22T03:16:21"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL018",
+      "ports": [
+        "PORT_07",
+        "PORT_10",
+        "PORT_04",
+        "PORT_01"
+      ],
+      "rotations": [
+        {
+          "rotation_number": 1,
+          "eta": "2025-01-07T08:07:39",
+          "etd": "2025-01-08T10:16:04",
+          "discharge_start": "2025-01-07T08:07:39",
+          "discharge_end": "2025-01-07T19:03:48",
+          "load_start": "2025-01-08T00:43:51",
+          "load_end": "2025-01-08T10:16:04"
+        }
+      ]
+    },
+    {
+      "vessel_id": "VSL019",
+      "ports": [
+        "PORT_06",
+        "PORT_04",
+        "PORT_02",
+        "PORT_07",
+        "PORT_15",
+        "PORT_09"
+      ],
+      "rotations": [],
+      "note": "Truck-only vessel, no ship calls in this period"
+    },
+    {
+      "vessel_id": "VSL020",
+      "ports": [
+        "PORT_07",
+        "PORT_05",
+        "PORT_02"
+      ],
+      "rotations": [],
+      "note": "Truck-only vessel, no ship calls in this period"
+    }
+  ]
+}
