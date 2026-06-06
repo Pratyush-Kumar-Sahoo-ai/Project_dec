@@ -80,7 +80,8 @@ def cem(layout, init, events, pop=16, elite=4, iters=8, init_sigma=1.5, seed=0, 
         samples.sort(key=lambda x: x[0])
         elites = [w for _, w in samples[:elite]]
         mu = [statistics.mean(e[i] for e in elites) for i in range(dim)]
-        sigma = [statistics.pstdev([e[i] for e in elites]) + 0.05 for i in range(dim)]
+        sigma_floor = max(0.01, 0.3*(1 - it/iters))
+        sigma = [statistics.pstdev([e[i] for e in elites]) + sigma_floor for i in range(dim)]
         if samples[0][0] < best_score:
             best_score, best_w = samples[0]
         print(f"  iter {it+1}/{iters}: best={samples[0][0]:.4f} "
