@@ -1,0 +1,23 @@
+{
+  "weights": {
+    "bias": 1.176837054103569,
+    "depth": 1.0216088141280075,
+    "is_empty": 1.8310285765858434,
+    "p_block": -0.5194389524906453,
+    "on_initial": -1.5997629861480567,
+    "block_occ": 1.7267766182513908,
+    "batch_violation": 2.569749827369919,
+    "over_softcap": 1.0580425573112122
+  },
+  "train_subsample_score": 0.7587929852062311,
+  "full_train_ratio": 0.7587929852062311,
+  "full_test_ratio": 0.7517362910749456,
+  "config": {
+    "train_events": 20592,
+    "pop": 12,
+    "elite": 4,
+    "iters": 6,
+    "quick": false,
+    "seed": 0
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "total_events": 19508,
+  "placement_events": 9861,
+  "retrieval_events": 9647,
+  "total_reshuffles": 7416,
+  "reshuffles_per_retrieval": 0.7687,
+  "reshuffle_percentage": 44.83,
+  "max_reshuffles_single": 3,
+  "retrievals_with_reshuffles": 4325,
+  "hard_constraint_violations": 0,
+  "placement_failures": 0,
+  "errors": 0,
+  "final_yard_count": 5985,
+  "elapsed_sec": 4.37,
+  "score_reshuffles": 1.3,
+  "score_violations": 10.0,
+  "quantitative_score": 11.3,
+  "strategy": "solution.eri_strategy.ERIStrategy",
+  "data_dir": "data/test"
+}
