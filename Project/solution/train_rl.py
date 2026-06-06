@@ -27,6 +27,7 @@ from src.models import Event
 from src.yard_state import YardState
 from src.simulator import Simulator
 from solution.rl_strategy import RLStrategy, FEATURES, _GREEDY_WEIGHTS
+from multiprocessing import Pool, cpu_count
 
 _HERE = os.path.dirname(__file__)
 _WEIGHTS_PATH = os.path.join(_HERE, "rl_weights.json")
@@ -51,20 +52,31 @@ def evaluate(weights, layout, init, events):
     # Penalise any constraint violation heavily (should never happen).
     return stats.reshuffles_per_retrieval + 10.0 * stats.hard_constraint_violations
 
+def _evaluate_worker(args):
+    weights, layout, init, events = args
+    return evaluate(weights, layout, init, events)
 
-def cem(layout, init, events, pop=16, elite=4, iters=8, init_sigma=1.5, seed=0):
+def cem(layout, init, events, pop=16, elite=4, iters=8, init_sigma=1.5, seed=0, n_workers = None):
+    if n_workers is None:
+        n_workers = min(pop, max(1, cpu_count() - 1))
     rng = random.Random(seed)
     dim = len(FEATURES)
     mu = list(_GREEDY_WEIGHTS)                 # warm-start at the greedy policy
     sigma = [init_sigma] * dim
     best_w, best_score = list(mu), evaluate(mu, layout, init, events)
     print(f"  warm-start (greedy) score = {best_score:.4f}")
+    print(f"  using {n_workers} parallel workers")
     for it in range(iters):
         t0 = time.time()
-        samples = []
+        candidates = []
         for _ in range(pop):
             w = [mu[i] + sigma[i] * rng.gauss(0, 1) for i in range(dim)]
-            samples.append((evaluate(w, layout, init, events), w))
+            candidates.append(w)
+        # Evaluate candidates in parallel
+        work_items = [(w, layout, init, events) for w in candidates]
+        with Pool(n_workers) as pool:
+            scores = pool.map(_evaluate_worker, work_items)
+        samples = list(zip(scores, candidates))
         samples.sort(key=lambda x: x[0])
         elites = [w for _, w in samples[:elite]]
         mu = [statistics.mean(e[i] for e in elites) for i in range(dim)]
@@ -85,6 +97,7 @@ def main():
     ap.add_argument("--elite", type=int, default=4)
     ap.add_argument("--iters", type=int, default=8)
     ap.add_argument("--quick", action="store_true")
+    ap.add_argument("--workers", type=int, default=None, help="number of parallel workers to use for evaluation")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     if args.quick:
@@ -96,7 +109,7 @@ def main():
           f"(pop={args.pop}, elite={args.elite}, iters={args.iters})")
 
     best_w, best_score = cem(layout, init, sub, pop=args.pop, elite=args.elite,
-                             iters=args.iters, seed=args.seed)
+                             iters=args.iters, seed=args.seed, n_workers=args.workers)
 
     # Full-split validation of the learned policy.
     full_train = evaluate(best_w, layout, init, train_events)
