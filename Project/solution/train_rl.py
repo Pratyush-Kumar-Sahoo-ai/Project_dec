@@ -68,8 +68,8 @@ def cem(layout, init, events, pop=16, elite=4, iters=8, init_sigma=1.5, seed=0, 
     print(f"  using {n_workers} parallel workers")
     for it in range(iters):
         t0 = time.time()
-        candidates = []
-        for _ in range(pop):
+        candidates = [list(best_w)] # keep best candidate so far
+        for _ in range(pop-1):
             w = [mu[i] + sigma[i] * rng.gauss(0, 1) for i in range(dim)]
             candidates.append(w)
         # Evaluate candidates in parallel
