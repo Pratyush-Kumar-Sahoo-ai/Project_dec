@@ -3,16 +3,17 @@ Cross-Entropy Method (CEM).
 
 CEM is a derivative-free policy-search algorithm: it samples weight vectors from
 a Gaussian, evaluates each by *running the simulator* on the train split, keeps
-the best ("elite") fraction, and refits the Gaussian to the elites — repeating
+the best ("elite") fraction, and refits the Gaussian to the elites - repeating
 until the mean weight vector converges. Because the simulator is deterministic
 given a weight vector, every evaluation is noise-free, so CEM optimises the
 *true* objective (reshuffles/retrieval) with no reward shaping.
 
 Usage:
-    python -m solution.train_rl                  # train + save rl_weights.json
-    python -m solution.train_rl --quick          # smaller/faster search
+    python -m solution.train_rl          # train + save rl_weights.json
+    python -m solution.train_rl --quick  # smaller/faster search
+    python -m solution.train_rl --from-greedy # ignore checkpoint, start from greedy
 
-Output: solution/rl_weights.json  (consumed automatically by RLStrategy).
+Output: solution/rl_weights.json (consumed automatically by RLStrategy).
 """
 
 import argparse
@@ -22,12 +23,12 @@ import os
 import random
 import statistics
 import time
+from multiprocessing import Pool, cpu_count
 
 from src.models import Event
 from src.yard_state import YardState
 from src.simulator import Simulator
 from solution.rl_strategy import RLStrategy, FEATURES, _GREEDY_WEIGHTS
-from multiprocessing import Pool, cpu_count
 
 _HERE = os.path.dirname(__file__)
 _WEIGHTS_PATH = os.path.join(_HERE, "rl_weights.json")
@@ -42,6 +43,18 @@ def _load(split):
     return layout, init, events
 
 
+def _load_checkpoint():
+    """Load weights from last saved checkpoint. Returns list or None."""
+    try:
+        with open(_WEIGHTS_PATH) as fh:
+            data = json.load(fh)
+        w = [float(data["weights"][f]) for f in FEATURES]
+        print(f" warm-start from checkpoint (test={data.get('full_test_ratio', '?')})")
+        return w
+    except (OSError, KeyError, ValueError, TypeError):
+        return None
+
+
 def evaluate(weights, layout, init, events):
     """Run the policy with the given weights; return reshuffles/retrieval."""
     yard = YardState(layout)
@@ -49,75 +62,99 @@ def evaluate(weights, layout, init, events):
     strat = RLStrategy(weights=weights)
     strat.initialize(layout, init)
     stats = Simulator(yard, strat).run(events)
-    # Penalise any constraint violation heavily (should never happen).
     return stats.reshuffles_per_retrieval + 10.0 * stats.hard_constraint_violations
 
+
 def _evaluate_worker(args):
+    """Worker function for multiprocessing (must be top-level for pickling)."""
     weights, layout, init, events = args
     return evaluate(weights, layout, init, events)
 
-def cem(layout, init, events, pop=16, elite=4, iters=8, init_sigma=1.5, seed=0, n_workers = None):
+
+def cem(layout, init, events, pop=16, elite=4, iters=8, init_sigma=1.5,
+        seed=0, n_workers=None, warm_start=None):
     if n_workers is None:
         n_workers = min(pop, max(1, cpu_count() - 1))
     rng = random.Random(seed)
     dim = len(FEATURES)
-    mu = list(_GREEDY_WEIGHTS)                 # warm-start at the greedy policy
+
+    mu = list(warm_start) if warm_start is not None else list(_GREEDY_WEIGHTS)
     sigma = [init_sigma] * dim
     best_w, best_score = list(mu), evaluate(mu, layout, init, events)
-    print(f"  warm-start (greedy) score = {best_score:.4f}")
-    print(f"  using {n_workers} parallel workers")
+    print(f" warm-start score = {best_score:.4f}")
+    print(f" using {n_workers} parallel workers")
+
     for it in range(iters):
         t0 = time.time()
         candidates = []
         for _ in range(pop):
             w = [mu[i] + sigma[i] * rng.gauss(0, 1) for i in range(dim)]
             candidates.append(w)
-        # Evaluate candidates in parallel
+        
         work_items = [(w, layout, init, events) for w in candidates]
         with Pool(n_workers) as pool:
             scores = pool.map(_evaluate_worker, work_items)
+
         samples = list(zip(scores, candidates))
         samples.sort(key=lambda x: x[0])
         elites = [w for _, w in samples[:elite]]
+
         mu = [statistics.mean(e[i] for e in elites) for i in range(dim)]
         sigma = [statistics.pstdev([e[i] for e in elites]) + 0.05 for i in range(dim)]
+
         if samples[0][0] < best_score:
             best_score, best_w = samples[0]
-        print(f"  iter {it+1}/{iters}: best={samples[0][0]:.4f} "
+
+        print(f" iter {it+1}/{iters}: best={samples[0][0]:.4f} "
               f"mean_elite={statistics.mean(s for s, _ in samples[:elite]):.4f} "
               f"overall_best={best_score:.4f} ({time.time()-t0:.0f}s)")
+
     return best_w, best_score
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--train-events", type=int, default=6000,
-                    help="number of leading train events used per CEM evaluation")
+    ap.add_argument("--train-events", type=int, default=20592)
     ap.add_argument("--pop", type=int, default=16)
     ap.add_argument("--elite", type=int, default=4)
-    ap.add_argument("--iters", type=int, default=8)
+    ap.add_argument("--iters", type=int, default=12)
+    ap.add_argument("--sigma", type=float, default=1.5)
     ap.add_argument("--quick", action="store_true")
-    ap.add_argument("--workers", type=int, default=None, help="number of parallel workers to use for evaluation")
+    ap.add_argument("--from-greedy", action="store_true",
+                    help="ignore checkpoint, warm-start from greedy weights")
+    ap.add_argument("--workers", type=int, default=None)
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
+
     if args.quick:
-        args.train_events, args.pop, args.iters = 4000, 12, 5
+        args.train_events, args.pop, args.iters = 6000, 12, 8
+
+    # Warm-start weights
+    if args.from_greedy:
+        warm_start = list(_GREEDY_WEIGHTS)
+        print("Warm-starting from greedy weights")
+    else:
+        warm_start = _load_checkpoint() or list(_GREEDY_WEIGHTS)
 
     layout, init, train_events = _load("train")
     sub = train_events[:args.train_events]
     print(f"CEM policy search on first {len(sub)} train events "
           f"(pop={args.pop}, elite={args.elite}, iters={args.iters})")
 
-    best_w, best_score = cem(layout, init, sub, pop=args.pop, elite=args.elite,
-                             iters=args.iters, seed=args.seed, n_workers=args.workers)
+    best_w, best_score = cem(layout, init, sub,
+                             pop=args.pop, elite=args.elite,
+                             iters=args.iters, init_sigma=args.sigma,
+                             seed=args.seed, n_workers=args.workers,
+                             warm_start=warm_start)
 
-    # Full-split validation of the learned policy.
+    # Full-split validation
     full_train = evaluate(best_w, layout, init, train_events)
     layout_te, init_te, test_events = _load("test")
     full_test = evaluate(best_w, layout_te, init_te, test_events)
+
     print(f"\nLearned weights (subsample score {best_score:.4f}):")
     for f, w in zip(FEATURES, best_w):
-        print(f"    {f:16s} {w:+.3f}")
+        print(f"    {f:16s} {w:+.4f}")
     print(f"Full train reshuffles/retrieval = {full_train:.4f}")
     print(f"Full test  reshuffles/retrieval = {full_test:.4f}")
 
@@ -130,7 +167,6 @@ def main():
             "config": vars(args),
         }, fh, indent=2)
     print(f"Saved -> {_WEIGHTS_PATH}")
-
 
 if __name__ == "__main__":
     main()

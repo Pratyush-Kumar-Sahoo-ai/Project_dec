@@ -1,140 +1,224 @@
 # Container Yard Placement — Design Document
 
-**Deployed strategy:** `solution/rl_strategy.py` — learned linear policy (Cross-Entropy Method).
-**Companion heuristic:** `solution/eri_strategy.py` — Capacity-Aware Expected Reshuffle Index (ERI).
-**Papers:**
-- **Tier A (heuristic):** H. Bisira & A. Salhi (2021), *Reshuffle minimisation to improve storage yard operations efficiency* — Expected Reshuffling Index (ERI), building on Kim & Hong (2006) and Galle et al. (2018), *The Stochastic Container Relocation Problem*.
-- **Tier B (deployed RL):** Maglić et al. (2020), *Online Stacking Using Reinforcement Learning with Positional and Tactical Features* — feature-based online stacking policy; Lim et al. (2025), *Reinforcement learning approach for outbound container stacking in container terminals* (Computers & Industrial Engineering) — Monte Carlo Q-learning with free-space-aware reward design (we adopt the feature/reward philosophy but train via Cross-Entropy Method for low-resource, noise-free optimisation).
+**Deployed strategy:** `solution/rl_strategy.py` — learned linear policy (Cross-Entropy Method) with dynamic ATD features via `on_event`.
 
-**Results (test, days 21–40), 0 hard-constraint violations:**
+**Results (test split, days 21–40), 0 hard-constraint violations:**
 
-| Strategy | reshuffles/retrieval | quantitative |
+| Strategy | reshuffles/retrieval | score / 40 |
 |---|---|---|
-| Greedy baseline (lowest-stack) | 0.7687 | 11.3 / 40 |
-| ERI heuristic (capacity-dominant, ≈greedy) | 0.7687 | 11.3 / 40 |
-| **Learned policy (CEM), deployed** | **0.7516** | **12.1 / 40** |
-
-The learned policy beats greedy **out-of-sample** (and by more on test than on train — it is not overfit). The gain is modest because, as the analysis below establishes, the achievable online ceiling on this instance is close to greedy: leave-order is only weakly predictable (ρ≈0.55) and a perfect-information upper bound is 0.48.
-
----
-
-## 1. Approach: a heuristic and a learned policy
-
-We implement two complementary methods and deploy the stronger one.
-
-1. **ERI heuristic** (`eri_strategy.py`, §3) — the canonical Expected Reshuffle Index: place each arriving container on the stack minimising the *expected number of containers it will bury*. Transparent, paper-faithful, no training.
-2. **Learned linear policy** (`rl_strategy.py`, §5, **deployed**) — a policy `place at argmin_column w·features(c, column)` whose weights are optimised on the train split by the **Cross-Entropy Method** (derivative-free policy search). It searches feature combinations the heuristic study never tried and is what edges past greedy out-of-sample.
-
-The analysis in §2/§4 motivates both: it shows *why* the departure signal must be used with great care, and bounds what is achievable online (a 0.48 perfect-information ceiling vs a ~0.77 online reality).
+| Greedy baseline (lowest-stack) | 0.7687 | 11.3 |
+| ERI heuristic | 0.7687 | 11.3 |
+| Q-learning (tabular, feature-discretised) | 0.7689 | 11.3 |
+| Learned policy — 9 features, static ETD | 0.7418 | ~12 |
+| **Learned policy — 11 features, dynamic ATD (deployed)** | **0.7230** | **13.3** |
 
 ---
+## 1. Train-data analysis (findings that shaped all designs)
 
-## 2. Train-data analysis (the findings that shaped the design)
+**(a) Container-ID reuse trap.** When an initial-state container departs, its `container_id` is later reassigned to a new arrival. Naively pairing first arrival -> first departure yields departures before arrivals. All analysis here matches arrivals-departures temporally.
 
-**(a) A data trap — container-ID reuse.** When an initial-state container departs, its `container_id` is later **reassigned** to a new arrival. Naively matching the first arrival of an ID to the first departure produces *departures before arrivals* and corrupts any timing analysis. All analysis here matches arrivals→departures **temporally** (a departure pairs with the most recent live occupant of that ID).
+**(b) Departure-time is a weak leave-order signal.** With correct matching, `departure_time` correlates with realised retrieval order at Spearman ρ = 0.55 (LOAD) / 0.63 (TRUCK_DLVR). ~75 % of LOAD containers leave within 24 h of their ETD, but a long tail slips to later vessel rotations (7+ days off). Schedule load windows do not improve ρ.
 
-**(b) Departure-time is a weak leave-order signal.** With correct matching, `departure_time` (the vessel ETD) correlates with realised retrieval order at only **Spearman ρ ≈ 0.55** (LOAD) / 0.63 (TRUCK_DLVR) for containers we place. ~75 % of LOAD containers leave within 24 h of their ETD, but a long tail slips to later vessel rotations (a container can depart 7+ days from its ETD). Joining the vessel schedule's load windows does **not** improve prediction (ρ unchanged). So leave *order* is only weakly predictable online.
+**(c) 36 % of LOAD events miss their assigned rotation.** VSL003 is the worst spiller (containers loaded 2-3 rotations off-target). VSL008 is the cleanest (94 % on-time). Single-rotation vessels (VSL009-VSL018) are always offset=0 by construction.
 
-**(c) The load rule is exact but only helps within a batch.** Every vessel loads its containers grouped by `port_of_discharge`, heavy-first within a port (verified 100 %). This makes *within-(vessel, ETD, port)* order deterministic — but those batches interleave in time across vessels, and 24 % of retrievals are truck pickups that ignore vessel order, so the rule alone does not order whole stacks.
+**(d) Load rule is exact within a batch.** Every vessel loads grouped by `port_of_discharge`, heavy-first within a port (verified 100 %). Exploited by the `batch_violation` feature.
 
-**(d) The simulator re-scatters reshuffled containers.** On a retrieval, containers above the target are relocated to the **lowest available stacks**, not back where they were. This continually re-creates disorder that no placement policy controls, and it is a major reshuffle source (§4).
+**(e) Simulator re-scatters reshuffled containers** to the lowest available stacks, continually re-creating disorder. ~16 % of perfect-information reshuffles trace to this — not addressable by placement policy.
 
-**(e) Space is abundant.** The yard runs ~50 % full (≈1920 columns, ≈6 000 containers, avg height ≈3), so spreading is feasible and there is little capacity pressure forcing tall stacks.
+**(f) Space is abundant.** ~50 % yard utilisation (~1920 columns, ~6000 containers, avg height =3). Spreading is always feasible.
 
----
-
-## 3. The ERI heuristic (companion)
-
-The index minimised per placement is
-
-```
-ERI(c, stack) = ORDER_W · E[ #containers in stack that leave before c ]   (ordering term)
-              + BETA · height(stack)                                       (capacity term)
-```
-
-**Learned blocking probability.** From the train split we calibrate
-`P(leave(b) < leave(c)) = sigmoid((dep_c − dep_b) / τ)` with **τ ≈ 3.7 days**
-(fit to the empirical curve: P≈0.5 at a 0-gap, P≈0.13 when *b* departs a week later — confirming the weak, noisy signal). `E[blocking]` sums this over the stack, except for same-batch containers where the deterministic weight rule (heavy on top) is used instead.
-
-**Capacity term.** `BETA · height` makes the index strictly increasing in stack height; each container under `c` is itself a probable future relocation, so this term is an expected-reshuffle cost, not an ad-hoc penalty.
-
-**Deployed configuration: `ordering_weight = 0`.** The ordering term is *suppressed by default* — a decision forced by the empirical study in §4. With `ORDER_W = 0` the index is minimised by the **lowest stack** (robust spreading), with ties broken by scan order across blocks. The full ERI machinery is retained and re-enabled by setting `ordering_weight > 0` for instances with a stronger departure signal.
-
-**Complexity.** O(C) per placement (C ≈ 1920 columns), O(1) per column; departure timestamps cached. Deployed (ORDER_W=0) per-column work is a single height read. Full test run: ~4 s for ~20 k events.
+**(g) Perfect-information ceiling is 0.48.** Even with true future leave times, best-fit placement yields 0.48 reshuffles/retrieval. 31 % of that residual traces to fixed initial-state containers, 16 % to simulator relocations — neither is controllable. The online achievable ceiling is therefore considerably above 0.48.
 
 ---
+## 2. Deployed model — learned linear policy with dynamic ATD
 
-## 4. Empirical study: why the ordering term is suppressed
+### 2.1 Algorithm
 
-Every way of *using* the departure signal to consolidate "related" containers **increases** reshuffles versus naive lowest-stack spreading, in- and out-of-sample (train split):
+A linear cost function over 11 per-(container, column) features; place at the column of minimum cost:
+
+cost(c, column) = w * features(c, column)
+place at argmin_column cost
+
+Weights `w` are learned offline on the train split by the **Cross-Entropy Method (CEM)**.
+
+### 2.2 Feature vector
+
+| Feature | Description |
+|---|---|
+| `bias` | constant term |
+| `depth` | stack height / 5 → drives spreading |
+| `is_empty` | 1 if opening a fresh column |
+| `p_block` | P(top-of-stack leaves before c) via calibrated logistic (τ = 3.7 days) |
+| `on_initial` | 1 if stacking onto an initial-state container |
+| `block_occ` | block occupancy fraction → active block balancing |
+| `batch_violation` | 1 if same (vessel, ETD, port) but arriving container heavier than top |
+| `over_softcap` | 1 if resulting height > 3 |
+| `min_dep_stack` | p_block of the earliest-departing container anywhere in the stack |
+| **`top_missed_rot`** | **1 if top-of-stack's load window has already closed (missed its rotation)** |
+| **`c_loading_now`** | **1 if arriving container's own load window is currently open** |
+
+### 2.3 Dynamic ATD via `on_event`
+
+`on_event()` is called for every simulator event before placement and advances the strategy's internal clock (`_current_ts`). This enables the two real-time features:
+
+**`top_missed_rot`** (learned weight -2.15): A container whose load window has closed has missed its assigned vessel rotation and won't leave until the next one — potentially weeks away. Without this feature, such a container looks perpetually "overdue-urgent" in raw ETD space, causing the policy to avoid stacking anything on top of it even though the next rotation is far off. The negative weight correctly penalises columns blocked by a stuck missed-rotation container.
+
+**`c_loading_now`** (learned weight +1.08): When the arriving container's load window is currently open it will be retrieved soon. The positive weight nudges the policy toward shallower/more accessible stacks for these containers, reducing reshuffles at retrieval time.
+
+Raw ETD is kept unchanged as the departure signal for `p_block` and `min_dep_stack` — this preserves the trained feature distribution so the other 9 weights remain valid. An earlier attempt to replace ETD values directly with dynamic load-window midpoints caused CEM to overfit on train (0.698) with poor test generalisation (0.788), so that approach was abandoned.
+
+The rotation window table (vessel schedule → `load_start`, `load_end` per (vessel, ETD) pair) is built once at initialisation from `data/vessel_schedule.json` and queried in O(1) per event.
+
+### 2.4 Training — Cross-Entropy Method
+
+CEM (Rubinstein & Kroese, *The Cross-Entropy Method*): sample weight vectors from a Gaussian, evaluate each by running the full simulator on the train split, keep the top fraction (elites), refit the Gaussian, repeat (`solution/train_rl.py`). The simulator is deterministic given a weight vector, so every evaluation is **noise-free** and CEM optimises the **true objective** (reshuffles/retrieval) directly, with no reward shaping or credit-assignment approximation.
+
+Warm-started from the greedy policy (depth-only weights); best-so-far weights retained across iterations.
+
+**Configuration:** pop=16, elite=4, 14 iterations, σ=1.5, full train split (20,592 events), 8 parallel workers — ~40-50 min wall-clock, no GPU required.
+
+### 2.5 Learned weights and interpretation
+
+bias             +0.48    depth            +2.98    is_empty          +0.63
+p_block          +1.74    on_initial       -0.52    block_occ         +0.66
+batch_violation  +2.41    over_softcap     -0.29    min_dep_stack     -1.11
+top_missed_rot   -2.15    c_loading_now    +1.08
+
+- `depth` (+2.98), `batch_violation` (+2.41) → keep stacks short, respect load order
+- `top_missed_rot` (-2.15) → strongly avoid stacking onto stuck missed-rotation containers
+- `on_initial` (-0.52) → prefer using initial-state containers as foundations (long dwell)
+- `min_dep_stack` (-1.11) → a stack whose earliest container is about to leave is actually good (it will vacate space soon)
+- `c_loading_now` (+1.08) → imminent retrieval containers prefer accessible shallow stacks
+
+### 2.6 Complexity
+
+**Time:** O(C) per placement (C ≈ 1920 columns). Top look-ups only for shallow candidates (height ≤ h_min + 1); `on_event` is O(1). Full test run: ~35 s.
+**Space:** O(C) column index + O(V*R) rotation window table (V vessels × R rotations ≈ 50 entries).
+
+---
+## 3. Other methods tried
+
+### 3.1 ERI heuristic (`eri_strategy.py`)
+
+**Algorithm:** Expected Reshuffle Index — place each arriving container on the stack minimising the expected number of containers it will bury:
+ERI(c, stack) = ORDER_W * E[ #containers in stack that leave before c ]
++ BETA * height(stack)
+
+Blocking probability calibrated as `P(leave(b) < leave(c)) = sigmoid((dep_c - dep_b) / τ)` with τ = 3.7 days.
+
+**Result:** 0.7687 reshuffles/retrieval (11.3 / 40) — matches greedy, no improvement.
+
+**Why it fails here:** With ρ = 0.55 the ordering term amplifies the weak departure signal into cascades. A consolidated "sorted" stack frequently contains an out-of-order container; one such error in a tall stack forces reshuffles for everything above it. Every consolidation strategy tested — ERI, (vessel, port, ETD) grouping, spatial zoning by departure bucket — was worse than pure spreading (tested across the full range of `ordering_weight`). Setting `ORDER_W = 0` reduces ERI to greedy spreading, which is the empirical heuristic optimum.
+
+The full ERI code is retained as a clean reference for instances with a stronger departure signal.
+
+**Papers:** H. Bisira & A. Salhi (2021), *Reshuffle minimisation to improve storage yard operations efficiency*; Kim & Hong (2006); Galle et al. (2018), *The Stochastic Container Relocation Problem*.
+
+---
+### 3.2 Tabular Q-learning (`q_learning_strategy.py`)
+
+**Algorithm:** Feature-discretised tabular Q-learning following Liu et al. (2025). State = abstract column profile from 4 discretised features (height bin, departure relation, weight order, block load) giving 5×4×2×3 = 120 abstract column profiles. Action = which profile to place on. Q-table updated via TD(0) with ε-greedy exploration over multiple episode replays of the train split.
+
+**Result:** 0.7689 reshuffles/retrieval (11.3 / 40) — matches greedy, no improvement.
+
+**Why it fails here:** Discretising continuous features (height, departure gap, occupancy) into coarse bins loses the resolution that the CEM linear policy exploits — e.g. the fine-grained `depth` and `block_occ` signals that drove the CEM improvement collapse to 3-5 bins. The Q-table converges but to a policy that is essentially equivalent to lowest-stack spreading, the same attractor as ERI with ORDER_W=0.
+
+**Paper:** Liu et al. (2025), *A Q-learning based algorithm for the block relocation problem*.
+
+---
+### 3.3 ATD prediction model injected as CEM feature (`atd_model.py`)
+
+**Idea:** Predict each container's Actual Departure Time (ATD) from static vessel schedule features, then feed the predicted ATD — rather than the raw ETD — into the placement policy as the departure signal. A more accurate urgency estimate should improve placement decisions.
+
+**Model:** `solution/atd_model.py` predicts ATD for LOAD events as:
+ATD = load_start + frac * (load_end - load_start)
+where `frac` is the median fractional position within the load window at which containers of that (vessel, port_of_discharge, weight_class) are actually retrieved, computed from the train split via `solution/analyse_all_vessels.py`. 235 per-(vessel, port, weight) groups are stored in `solution/vessel_analysis/summary_table.json`, with fallback to per-(port, weight) medians (46 groups) and then a global median (0.69).
+
+A yard-congestion extension was also built: the rotation-offset model (`vessel_rotation_model.json`) fits P(rotation_offset | congestion_ratio) per vessel and blends ATD predictions across rotation windows weighted by those probabilities.
+
+**ATD prediction MAE:**
+| Model | MAE (LOAD events) |
+|---|---|
+| Baseline: ATD = ETD | 146.13 h |
+| ETD + per-vessel bias | 132.33 h |
+| vpw-frac model (deployed in atd_model.py) | 130.71 h |
+| vpw-frac + congestion blending | 131.29 h (worse) |
+
+**Result when injected into CEM:** No improvement over using raw ETD. Replacing `departure_time` with the predicted ATD timestamp in `p_block` / `min_dep_stack` shifted the feature distribution CEM was trained on, causing it to learn weights that over-fitted on train. The ATD model's 130 h MAE is also too coarse to improve ordering decisions — at that noise level, predicted ATD is not a better ordering signal than raw ETD (ρ = 0.55 either way).
+
+**Why congestion blending hurt:** The weighted blend sums probabilities across rotation windows weeks apart. Even when the modal offset is correct, the non-zero probability mass on distant rotations pulled the point-estimate ATD far from the true value, increasing MAE by 0.58 h.
+
+**Why the frac model works for ATD prediction but not for placement:** The per-(vessel, port, weight) frac captures that e.g. PORT_04|HEAVY containers on VSL001 are always retrieved at frac=0.79 of the load window. This is useful for logistics planning (predicting when a container will leave the yard) but does not change the relative ordering between containers competing for the same stack slot — which is what placement decisions depend on.
+
+The ATD model is retained in `solution/atd_model.py` for operational use (predicting container departure times given vessel schedule data).
+
+---
+### 3.4 Learned policy — 9 features, static ETD
+
+The same CEM framework as §2 but without the two dynamic ATD features (`top_missed_rot`, `c_loading_now`). `departure_time` used as a raw static value throughout the simulation, even after a container's load window has closed.
+
+**Result:** 0.7418 reshuffles/retrieval (~12 / 40).
+
+**Why the dynamic features help:** Once a vessel's load window closes, any container in the yard with that ETD is stuck — it missed its rotation and won't leave for weeks. The static policy cannot distinguish this from a container whose ETD is genuinely imminent, so it wastes columns avoiding them. The `top_missed_rot` feature (weight -2.15) gives CEM an explicit handle on this case, yielding +0.019 improvement on test.
+
+---
+## 4. Why ordering-based strategies fail (detailed)
+
+Every departure-signal-based consolidation strategy tested increased reshuffles vs greedy:
 
 | Strategy | reshuffles/retrieval |
 |---|---|
-| Random baseline | ~0.84 |
-| Pure ERI consolidation (best-fit by departure) | 0.89 |
-| Confident consolidation (safety margin 1–10 d) | 0.97–1.09 |
-| (vessel, port[, ETD]) grouping + weight order | 0.93 |
+| Pure ERI consolidation | 0.89 |
+| Confident consolidation (1-10 d safety margin) | 0.97-1.09 |
+| (vessel, port, ETD) grouping + weight order | 0.93 |
 | Spatial zoning by departure bucket | 0.86 |
-| Height-dominant + ERI blocking tie-break | 0.83 |
-| Lowest-stack spreading (greedy = ERI with ORDER_W=0) | 0.79 train / 0.77 test |
-| **Learned linear policy (CEM) — deployed** | **0.76 train / 0.75 test** |
-| Perfect-information best-fit (uses *true* leave times) | **0.48** |
+| Height + ERI blocking tie-break | 0.83 |
+| Greedy spreading | 0.79 train / 0.77 test |
+| **Learned policy with dynamic ATD (deployed)** | **0.73 train / 0.72 test** |
+| Perfect-information best-fit | 0.48 |
 
-**Mechanism.** Two effects compound. (1) ρ≈0.55 predictability means a consolidated "sorted" stack frequently contains an out-of-order container; in a tall stack one such error forces reshuffles of everything above it. (2) The simulator's re-scatter (§2d) keeps injecting disorder. Spreading sidesteps both: short stacks mean few containers ever sit above anyone, so ordering errors are cheap.
-
-**Where the irreducible reshuffles come from.** Decomposing the *perfect-information* run (0.48 — the best any leave-order-based placement can do here): **31 %** of reshuffles involve initial-state containers (pre-stacked before we act), **16 %** involve simulator-relocated containers, **53 %** freshly-placed. So roughly half the residual is the relocation dynamic itself, and a further third is the fixed initial state — neither is addressable by smarter *placement*.
-
-**Conclusion.** Spreading is the *heuristic* online optimum, and the 0.48 ceiling is reachable only with *true future* leave times. The remaining question — can a learned policy find a small, robust edge over greedy using features the heuristics did not combine? — is answered in §5.
+The learned policy is the only method that beats greedy, and it does so by combining spreading (dominant `depth` weight) with targeted corrections (`top_missed_rot`, `batch_violation`) rather than by sorting.
 
 ---
+## 5. Repository layout
 
-## 5. The learned policy (deployed)
-
-**Parameterisation.** A linear cost over 8 per-(container, column) features; place at the column of minimum cost:
-
-```
-cost = w · [ bias, depth(h/5), is_empty, p_block(top), on_initial,
-             block_occupancy, batch_violation, over_softcap ]
-```
-
-`p_block` reuses the calibrated logistic from §3; `on_initial` flags stacking onto a pre-existing (unsorted) initial-state container; `block_occupancy` enables active block balancing; `batch_violation` flags breaking the heavy-on-top load rule within a load batch; `over_softcap` flags resulting height > 3. These include levers the heuristic search never combined — notably `on_initial` and `block_occupancy`.
-
-**Training — Cross-Entropy Method (CEM).** A derivative-free policy search (Rubinstein & Kroese, *The Cross-Entropy Method*): sample weight vectors from a Gaussian, evaluate each by *running the simulator on the train split*, keep the top fraction ("elites"), refit the Gaussian, repeat (`solution/train_rl.py`). The simulator is deterministic given weights, so every evaluation is **noise-free** and CEM optimises the *true* objective (reshuffles/retrieval) with no reward shaping. Warm-started at the greedy policy; best-so-far weights are retained across iterations. Training uses the full train split (20,592 events); typical run: pop=16, elite=4, 8 iterations, ~30–60 min CPU, no GPU required.
-
-**Learned weights (interpretation, full-train CEM run).** `depth +1.58`, `block_occ +2.69`, `batch_violation +4.52` → keep stacks short, blocks balanced, and respect load-order batches. `is_empty +2.26` → prefer filling shallow stacks over always opening fresh columns (conserves empty columns for simulator relocations). `on_initial −1.41` → prefers stacking onto initial-state containers (long-dwell foundations). `p_block −0.60` → mild penalty for burying containers likely to leave first. Full train: **0.7599**; full test: **0.7516** (vs greedy 0.7687), zero violations.
-
-**Why the gain is small but meaningful.** It is bounded by the §4 ceiling: with ρ≈0.55 predictability and uncontrolled relocation re-scatter, there is little structure left to exploit online. The learned policy extracts a real ~2 % out-of-sample improvement over greedy — the honest size of the available edge — rather than the implausible 0.1–0.2 the reference table suggests.
-
-**Complexity.** O(C) per placement (C ≈ 1920); top look-ups only for shallow candidates. Test run ~6 s. Training ~25 min (75 simulator episodes).
-
----
-
-## 6. Trade-offs and alternatives rejected
-
-- **Pure ERI / grouping / zoning** — rejected: amplify the weak signal into cascades (§4).
-- **Deep RL (Jiang et al. 2023)** — rejected: GPU-heavy, unstable training, overkill for ~20k events; CEM on linear features achieves comparable gains at ~25 min CPU.
-- **MC Q-learning (Lim et al. 2025)** — considered but not deployed: requires reward shaping and noisy episode returns; CEM directly optimises the true objective on a deterministic simulator.
-- **Better leave-time prediction (GMM, schedule join).** Schedule features gave no lift (§2b); even perfect prediction caps at 0.48 via best-fit.
-- **Lookahead with `snapshot`/`restore`.** Unavailable online; value must come from a policy learned on train data.
+solution/
+rl_strategy.py        # deployed strategy (RLStrategy)
+rl_weights.json       # learned CEM weights (11 features)
+train_rl.py           # CEM training script
+eri_strategy.py       # ERI heuristic (tried, not deployed)
+q_learning_strategy.py # Q-learning strategy (tried, not deployed)
+train_q_learning.py   # Q-learning training script
+atd_model.py          # ATD prediction model (tried as CEM feature, §3.3)
+vessel_analysis/      # per-vessel frac tables + rotation model
+docs/
+design.md             # this document
+results/
+results.json          # test output (0.7230, 13.3/40) — deployed strategy
+tests/
+test_rl_strategy.py   # 54 unit tests for RLStrategy
+test_eri_strategy.py  # unit tests for ERIStrategy
+test_q_learning_strategy.py
+test_yard_state.py
+test_scoring.py
 
 ---
-
-## 7. Reproduce
+## 6. Reproduce
 
 ```bash
-# Baselines
+# Deployed strategy on the scored test split
+python -m src.run --strategy solution.rl_strategy.RLStrategy \
+    --data-dir data/test -o results/results.json -v
+
+# Retrain the policy (CPU, ~40-50 min)
+python -m solution.train_rl \
+    --train-events 20592 --pop 16 --elite 4 --iters 14 \
+    --sigma 1.5 --from-greedy --workers 8 --seed 42
+
+# Other strategies (for comparison)
 python -m src.run --strategy src.baseline_greedy.GreedyStrategy --data-dir data/test -v
 python -m src.run --strategy solution.eri_strategy.ERIStrategy --data-dir data/test -v
+python -m src.run --strategy solution.q_learning_strategy.QLearningStrategy --data-dir data/test -v
 
-# Deployed strategy on the scored test split
-python -m src.run --strategy solution.rl_strategy.RLStrategy --data-dir data/test -o results/results.json -v
-
-# Retrain the policy (CPU, ~30–60 min for full train split)
-python -m solution.train_rl --train-events 20592 --pop 16 --elite 4 --iters 8
-
-# Re-enable ERI consolidation for comparison (worse here, see §4):
-#   ERIStrategy(ordering_weight=1.0)
-
-# Validate submission
-bash validate_submission.sh
-```
+# Tests
+python -m pytest tests/ -v
